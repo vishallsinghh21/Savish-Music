@@ -1,5 +1,6 @@
 package echo.music.iad1tya.ui.screens
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,11 +22,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
@@ -43,7 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,11 +52,23 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
-import echo.music.iad1tya.viewmodels.HomeViewModel
-import echo.music.iad1tya.viewmodels.SavishPlatform
-import com.music.innertube.models.YTItem
+import com.music.innertube.models.Artist
 import com.music.innertube.models.SongItem
-import android.net.Uri
+import com.music.innertube.models.YTItem
+import echo.music.iad1tya.viewmodels.HomeViewModel
+
+private data class SavishPlatform(
+    val name: String,
+    val title: String,
+    val auraColor: Color
+) {
+    companion object {
+        val ALL_MEDIA = SavishPlatform("all_media", "All media", Color(0xFF18D7F5))
+        val YOUTUBE = SavishPlatform("youtube", "YouTube", Color(0xFFFF2D55))
+        val SPOTIFY = SavishPlatform("spotify", "Spotify", Color(0xFF1DB954))
+        val JIOSAAVN = SavishPlatform("jiosaavn", "JioSaavn", Color(0xFFFF9500))
+    }
+}
 
 @Composable
 fun HomeScreen(
@@ -63,11 +76,10 @@ fun HomeScreen(
     snackbarHostState: SnackbarHostState,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val selectedPlatform by viewModel.selectedPlatform.collectAsState()
-    val auraColor by viewModel.currentPlatformAuraColor.collectAsState()
+    var selectedPlatform by remember { mutableStateOf(SavishPlatform.ALL_MEDIA) }
+    val auraColor = selectedPlatform.auraColor
     val homePage by viewModel.homePage.collectAsState()
     val quickPicks by viewModel.quickPicks.collectAsState()
-    val accountName by viewModel.accountName.collectAsState()
     var searchText by remember { mutableStateOf("") }
 
     val platforms = listOf(
@@ -108,12 +120,7 @@ fun HomeScreen(
                         ) {
                             Column {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        Modifier
-                                            .size(9.dp)
-                                            .clip(CircleShape)
-                                            .background(auraColor)
-                                    )
+                                    Box(Modifier.size(9.dp).clip(CircleShape).background(auraColor))
                                     Spacer(Modifier.width(7.dp))
                                     Text(
                                         "• GLOBAL SYNC ACTIVE",
@@ -131,7 +138,6 @@ fun HomeScreen(
                                     fontWeight = FontWeight.Black
                                 )
                             }
-
                             Surface(
                                 modifier = Modifier
                                     .size(54.dp)
@@ -142,12 +148,7 @@ fun HomeScreen(
                                 color = auraColor.copy(alpha = .12f)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Profile",
-                                        tint = auraColor,
-                                        modifier = Modifier.size(25.dp)
-                                    )
+                                    Icon(Icons.Default.Edit, "Profile", tint = auraColor, modifier = Modifier.size(25.dp))
                                 }
                             }
                         }
@@ -169,7 +170,7 @@ fun HomeScreen(
                                             if (active) color else Color.White.copy(alpha = .13f),
                                             RoundedCornerShape(24.dp)
                                         )
-                                        .clickable { viewModel.selectPlatform(platform) },
+                                        .clickable { selectedPlatform = platform },
                                     shape = RoundedCornerShape(24.dp),
                                     color = if (active) color.copy(alpha = .16f) else Color(0xFF171C23)
                                 ) {
@@ -198,26 +199,18 @@ fun HomeScreen(
                                 .clip(RoundedCornerShape(28.dp))
                                 .background(Color(0xFF20262E))
                                 .border(1.3.dp, auraColor.copy(alpha = .35f), RoundedCornerShape(28.dp))
-                                .clickable {
-                                    if (searchText.isNotBlank()) {
-                                        val q = Uri.encode(searchText)
-                                        if (selectedPlatform == SavishPlatform.JIOSAAVN) {
-                                            navController.navigate("jiosaavn_search/$q")
-                                        } else {
-                                            navController.navigate("search/$q?platform=${selectedPlatform.name.lowercase()}")
-                                        }
-                                    }
-                                }
                                 .padding(horizontal = 17.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.Search, null, tint = auraColor, modifier = Modifier.size(23.dp))
-                            androidx.compose.foundation.text.BasicTextField(
+                            BasicTextField(
                                 value = searchText,
                                 onValueChange = { searchText = it },
                                 singleLine = true,
-                                modifier = Modifier.weight(1f).padding(start = 12.dp),
-                                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 12.dp),
+                                textStyle = TextStyle(color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
                                 decorationBox = { inner ->
                                     if (searchText.isEmpty()) {
                                         Text(
@@ -245,9 +238,7 @@ fun HomeScreen(
                             items = section.items,
                             accent = auraColor,
                             onItemClick = { item ->
-                                if (item is SongItem) {
-                                    navController.navigate("watch/${item.id}")
-                                }
+                                if (item is SongItem) navController.navigate("watch/${item.id}")
                             }
                         )
                     }
@@ -257,7 +248,7 @@ fun HomeScreen(
                             title = "New releases",
                             label = null,
                             items = quickPicks!!.map { song ->
-                                SongItem(song.id, song.title, song.artists.map { com.music.innertube.models.Artist(it.name, it.id) }, thumbnail = song.thumbnailUrl ?: "")
+                                SongItem(song.id, song.title, song.artists.map { Artist(it.name, it.id) }, thumbnail = song.thumbnailUrl ?: "")
                             },
                             accent = auraColor,
                             onItemClick = { }
@@ -303,17 +294,12 @@ private fun SavishSection(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(items.distinctBy { it.id }, key = { it.id }) { item ->
-                Column(
-                    modifier = Modifier.width(176.dp).clickable { onItemClick(item) }
-                ) {
+                Column(modifier = Modifier.width(176.dp).clickable { onItemClick(item) }) {
                     AsyncImage(
                         model = item.thumbnail,
                         contentDescription = item.title,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(176.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                        modifier = Modifier.fillMaxWidth().height(176.dp).clip(RoundedCornerShape(12.dp))
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
