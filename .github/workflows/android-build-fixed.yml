@@ -14,42 +14,106 @@ jobs:
           java-version: '21'
           distribution: temurin
           cache: gradle
-      - name: Fix compile errors and Savish UI
+      - name: Restore and integrate final Savish UI
         run: |
+          set -e
+          git checkout d70305dad76407bcd3738fad8c9dd03c7cae4ae4 -- app/src/main/kotlin/com/music/echo/MainActivity.kt
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('app/src/main/kotlin/com/music/echo/MainActivity.kt')
-          s=p.read_text()
-          if 'import echo.music.iad1tya.constants.SavishPlatformKey' not in s:
-              s=s.replace('import echo.music.iad1tya.constants.UseFloatingNavBarKey','import echo.music.iad1tya.constants.UseFloatingNavBarKey\nimport echo.music.iad1tya.constants.SavishPlatformKey',1)
-          marker='                val (liquidGlassNavBarEnabled) = rememberPreference(LiquidGlassNavBarEnabledKey, defaultValue = true)'
+
+          p = Path('app/src/main/kotlin/com/music/echo/MainActivity.kt')
+          s = p.read_text()
+
+          def add_import(line, after):
+              global s
+              if line not in s:
+                  s = s.replace(after, after + '\n' + line, 1)
+
+          add_import('import echo.music.iad1tya.constants.SavishPlatformKey', 'import echo.music.iad1tya.constants.UseFloatingNavBarKey')
+          add_import('import echo.music.iad1tya.constants.SavishGlassHomeKey', 'import echo.music.iad1tya.constants.SavishPlatformKey')
+          add_import('import echo.music.iad1tya.constants.SavishGlassSearchKey', 'import echo.music.iad1tya.constants.SavishGlassHomeKey')
+          add_import('import echo.music.iad1tya.constants.SavishGlassSettingsKey', 'import echo.music.iad1tya.constants.SavishGlassSearchKey')
+          add_import('import echo.music.iad1tya.constants.SavishGlassContentKey', 'import echo.music.iad1tya.constants.SavishGlassSettingsKey')
+
+          marker = '                val (liquidGlassNavBarEnabled) = rememberPreference(LiquidGlassNavBarEnabledKey, defaultValue = true)'
           if marker in s and 'val (savishPlatform)' not in s:
-              s=s.replace(marker,marker+'\n                val (savishPlatform) = rememberPreference(SavishPlatformKey, defaultValue = "all_media")',1)
-          s=s.replace('globalEnabled = liquidGlassGlobalEnabled && useFloatingNavBar,','globalEnabled = liquidGlassGlobalEnabled,',1)
-          s=s.replace('shouldShowTopBar = currentRoute in topLevelScreens &&\n                        currentRoute != "settings" &&','shouldShowTopBar = currentRoute in topLevelScreens &&\n                        currentRoute != Screens.Home.route &&\n                        currentRoute != "settings" &&',1)
-          a=s.find('                val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer')
-          b=s.find('                val ringtoneViewModel: RingtoneViewModel = viewModel()',a)
-          if a>=0 and b>a:
-              block='''                val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer\n                val savishThemeColor = when (savishPlatform) {\n                    "youtube" -> Color(0xFF3D0A1A)\n                    "spotify" -> Color(0xFF075B39)\n                    "jiosaavn" -> Color(0xFF7A2D08)\n                    else -> Color(0xFF073C58)\n                }\n                val appBackdrop = rememberLayerBackdrop { drawContent() }\n\n'''
-              s=s[:a]+block+s[b:]
-          s=s.replace('Scaffold(\n                        snackbarHost = { SnackbarHost(snackbarHostState) },','Scaffold(\n                        containerColor = if (liquidGlassGlobalEnabled) savishThemeColor else baseBg,\n                        snackbarHost = { SnackbarHost(snackbarHostState) },',1)
+              s = s.replace(marker, marker + '''\n                val (savishPlatform) = rememberPreference(SavishPlatformKey, defaultValue = "all_media")\n                val (savishHomeGlass) = rememberPreference(SavishGlassHomeKey, defaultValue = true)\n                val (savishSearchGlass) = rememberPreference(SavishGlassSearchKey, defaultValue = true)\n                val (savishSettingsGlass) = rememberPreference(SavishGlassSettingsKey, defaultValue = true)\n                val (savishContentGlass) = rememberPreference(SavishGlassContentKey, defaultValue = true)''', 1)
+
+          old = '''                val glassEffectConfig = remember(\n                    liquidGlassGlobalEnabled, useFloatingNavBar, liquidGlassVibrancy, liquidGlassBlurRadius,\n                    liquidGlassLensHeight, liquidGlassLensAmount, liquidGlassChromaticAberration,\n                    liquidGlassDepthEffect, liquidGlassSurfaceTintColorInt,\n                    liquidGlassSurfaceOpacity, liquidGlassTextColorInt, liquidGlassPlayerEnabled,\n                    liquidGlassMiniPlayerEnabled, liquidGlassNavBarEnabled,\n                ) {\n                    GlassEffectConfig(\n                        globalEnabled = liquidGlassGlobalEnabled,\n                        vibrancy = liquidGlassVibrancy,\n                        blurRadius = liquidGlassBlurRadius,\n                        lensHeight = liquidGlassLensHeight,\n                        lensAmount = liquidGlassLensAmount,\n                        chromaticAberration = liquidGlassChromaticAberration,\n                        depthEffect = liquidGlassDepthEffect,\n                        surfaceTintColor = if (liquidGlassSurfaceTintColorInt == 0) Color.Unspecified else Color(liquidGlassSurfaceTintColorInt),\n                        surfaceOpacity = liquidGlassSurfaceOpacity,\n                        textColor = if (liquidGlassTextColorInt == 0) Color.Unspecified else Color(liquidGlassTextColorInt),\n                        playerEnabled = liquidGlassPlayerEnabled,\n                        miniPlayerEnabled = liquidGlassMiniPlayerEnabled,\n                        navBarEnabled = liquidGlassNavBarEnabled,\n                    )\n                }'''
+          new = '''                val glassEffectConfig = remember(\n                    liquidGlassGlobalEnabled, liquidGlassVibrancy, liquidGlassBlurRadius,\n                    liquidGlassLensHeight, liquidGlassLensAmount, liquidGlassChromaticAberration,\n                    liquidGlassDepthEffect, liquidGlassSurfaceTintColorInt, liquidGlassSurfaceOpacity,\n                    liquidGlassTextColorInt, liquidGlassPlayerEnabled, liquidGlassMiniPlayerEnabled,\n                    liquidGlassNavBarEnabled, savishHomeGlass, savishSearchGlass, savishSettingsGlass, savishContentGlass,\n                ) {\n                    GlassEffectConfig(\n                        globalEnabled = liquidGlassGlobalEnabled,\n                        vibrancy = liquidGlassVibrancy,\n                        blurRadius = liquidGlassBlurRadius,\n                        lensHeight = liquidGlassLensHeight,\n                        lensAmount = liquidGlassLensAmount,\n                        chromaticAberration = liquidGlassChromaticAberration,\n                        depthEffect = liquidGlassDepthEffect,\n                        surfaceTintColor = if (liquidGlassSurfaceTintColorInt == 0) Color.Unspecified else Color(liquidGlassSurfaceTintColorInt),\n                        surfaceOpacity = liquidGlassSurfaceOpacity,\n                        textColor = if (liquidGlassTextColorInt == 0) Color.Unspecified else Color(liquidGlassTextColorInt),\n                        playerEnabled = liquidGlassPlayerEnabled,\n                        miniPlayerEnabled = liquidGlassMiniPlayerEnabled,\n                        navBarEnabled = liquidGlassNavBarEnabled,\n                        homeEnabled = savishHomeGlass,\n                        searchEnabled = savishSearchGlass,\n                        settingsEnabled = savishSettingsGlass,\n                        contentEnabled = savishContentGlass,\n                    )\n                }'''
+          if old not in s:
+              raise SystemExit('GlassEffectConfig block not found')
+          s = s.replace(old, new, 1)
+
+          base_marker = '                val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer'
+          if base_marker not in s:
+              raise SystemExit('baseBg marker not found')
+          bg_block = '''                val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer\n                val savishPlatformBackground = when (savishPlatform) {\n                    "youtube" -> Color(0xFF16060B)\n                    "spotify" -> Color(0xFF04130C)\n                    "jiosaavn" -> Color(0xFF1A0903)\n                    else -> Color(0xFF06131A)\n                }\n                val savishPlatformGlow = when (savishPlatform) {\n                    "youtube" -> Color(0xFFFF2D55)\n                    "spotify" -> Color(0xFF1DB954)\n                    "jiosaavn" -> Color(0xFFFF9500)\n                    else -> Color(0xFF18D7F5)\n                }'''
+          s = s.replace(base_marker, bg_block, 1)
+
+          # Make the actual app backdrop carry the selected platform aura without applying blur to the full screen.
+          old = '''                val appBackdrop = rememberLayerBackdrop {\n                    drawRect(baseBg)\n                    drawContent()\n                }'''
+          new = '''                val appBackdrop = rememberLayerBackdrop {\n                    drawRect(if (liquidGlassGlobalEnabled) savishPlatformBackground else baseBg)\n                    if (liquidGlassGlobalEnabled) {\n                        drawCircle(\n                            color = savishPlatformGlow.copy(alpha = 0.16f),\n                            radius = size.minDimension * 0.72f,\n                            center = androidx.compose.ui.geometry.Offset(size.width * 0.78f, size.height * 0.18f),\n                        )\n                    }\n                    drawContent()\n                }'''
+          if old not in s:
+              raise SystemExit('appBackdrop block not found')
+          s = s.replace(old, new, 1)
+
+          # Remove the old Echo title from the home top bar and give Home a full-bleed canvas.
+          s = s.replace('Screens.Home.route -> "Echo Music"', 'Screens.Home.route -> "Savish Music"', 1)
+          old = '''                val inSearchScreen by remember {\n                    derivedStateOf { currentRoute?.startsWith("search/") == true }\n                }'''
+          new = old + '''\n                val isHomeScreen by remember {\n                    derivedStateOf { currentRoute == Screens.Home.route }\n                }'''
+          if old in s and 'val isHomeScreen by remember' not in s:
+              s = s.replace(old, new, 1)
+
+          s = s.replace('''                    shouldShowTopBar = currentRoute in topLevelScreens &&\n                        currentRoute != "settings" &&''', '''                    shouldShowTopBar = currentRoute in topLevelScreens &&\n                        currentRoute != Screens.Home.route &&\n                        currentRoute != "settings" &&''', 1)
+
+          s = s.replace('''                    playerBottomSheetState.isDismissed,\n                    showRail,\n                ) {''', '''                    playerBottomSheetState.isDismissed,\n                    showRail,\n                    isHomeScreen,\n                ) {''', 1)
+          s = s.replace('''                    if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight\n                    windowsInsets\n                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)\n                        .add(WindowInsets(top = AppBarHeight, bottom = bottom))''', '''                    if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight\n                    val topPadding = if (isHomeScreen) 0.dp else AppBarHeight\n                    windowsInsets\n                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)\n                        .add(WindowInsets(top = topPadding, bottom = bottom))''', 1)
+          s = s.replace('''                        !inSearchScreen &&\n                            (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)''', '''                        !inSearchScreen && !isHomeScreen &&\n                            (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)''', 1)
+
+          # Root canvas: platform background is global; glass itself stays component-scoped.
+          old = '''                    .background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)'''
+          new = '''                    .background(\n                        if (liquidGlassGlobalEnabled) savishPlatformBackground\n                        else if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface\n                    )'''
+          if old in s:
+              s = s.replace(old, new, 1)
+
           p.write_text(s)
 
-          hp=Path('app/src/main/kotlin/com/music/echo/ui/screens/HomeScreen.kt')
-          h=hp.read_text()
-          h=h.replace('import com.music.innertube.YouTube.SearchFilter.Companion.FILTER_SONG','import com.music.innertube.YouTube\nimport com.music.innertube.YouTube.SearchFilter.Companion.FILTER_SONG')
-          h=h.replace('import echo.music.iad1tya.LocalGlassEffectConfig','import echo.music.iad1tya.ui.component.LocalGlassEffectConfig')
-          h=h.replace('import echo.music.innertube.models.toMediaMetadata','import echo.music.iad1tya.models.toMediaMetadata')
-          old='''Brush.verticalGradient(\n                        listOf(Color(0xFF080C12), Color(0xFF101923), Color(0xFF07151A))\n                    )'''
-          new='''Brush.verticalGradient(\n                        when (selectedPlatform.name) {\n                            "youtube" -> listOf(Color(0xFF16060B), Color(0xFF5B0A20), Color(0xFF07121B))\n                            "spotify" -> listOf(Color(0xFF04130C), Color(0xFF075B39), Color(0xFF03131A))\n                            "jiosaavn" -> listOf(Color(0xFF1A0903), Color(0xFF8B3108), Color(0xFF25061B))\n                            else -> listOf(Color(0xFF06131A), Color(0xFF073C58), Color(0xFF080B18))\n                        }\n                    )'''
-          h=h.replace(old,new,1)
+          hp = Path('app/src/main/kotlin/com/music/echo/ui/screens/HomeScreen.kt')
+          h = hp.read_text()
+          h = h.replace('import com.music.innertube.YouTube.SearchFilter.Companion.FILTER_SONG', 'import com.music.innertube.YouTube\nimport com.music.innertube.YouTube.SearchFilter.Companion.FILTER_SONG')
+          h = h.replace('import echo.music.iad1tya.LocalGlassEffectConfig', 'import echo.music.iad1tya.ui.component.LocalGlassEffectConfig')
+          h = h.replace('import echo.music.innertube.models.toMediaMetadata', 'import echo.music.iad1tya.models.toMediaMetadata')
+          h = h.replace('val (homeGlassEnabled, setHomeGlassEnabled) = rememberPreference(SavishGlassHomeKey, defaultValue = false)', 'val (homeGlassEnabled, setHomeGlassEnabled) = rememberPreference(SavishGlassHomeKey, defaultValue = true)')
+          h = h.replace('''                    Brush.verticalGradient(\n                        listOf(Color(0xFF080C12), Color(0xFF101923), Color(0xFF07151A))\n                    )''', '''                    if (glassConfig.globalEnabled) Color.Transparent else Brush.verticalGradient(\n                        when (selectedPlatform.name) {\n                            "youtube" -> listOf(Color(0xFF16060B), Color(0xFF5B0A20), Color(0xFF07121B))\n                            "spotify" -> listOf(Color(0xFF04130C), Color(0xFF075B39), Color(0xFF03131A))\n                            "jiosaavn" -> listOf(Color(0xFF1A0903), Color(0xFF8B3108), Color(0xFF25061B))\n                            else -> listOf(Color(0xFF06131A), Color(0xFF073C58), Color(0xFF080B18))\n                        }\n                    )''', 1)
+
+          # Apply Liquid Glass to the capsules/profile as well as the existing search/results/cards.
+          h = h.replace('''                                    color = auraColor.copy(alpha = .12f),\n                                ) {''', '''                                    color = if (homeGlass) Color.Transparent else auraColor.copy(alpha = .12f),\n                                ) {''', 1)
+          h = h.replace('''                                    shape = RoundedCornerShape(24.dp),\n                                    color = if (active) color.copy(alpha = .16f) else Color(0xFF171C23),''', '''                                    shape = RoundedCornerShape(24.dp),\n                                    color = if (homeGlass) Color.Transparent else if (active) color.copy(alpha = .16f) else Color(0xFF171C23),''', 1)
+          # Add glass modifier to those two Surface wrappers without changing their full-screen behavior.
+          h = h.replace('''                                    .clickable { navController.navigate("settings") },\n                                shape = CircleShape,''', '''                                    .clickable { navController.navigate("settings") },\n                                    .then(if (homeGlass) Modifier.liquidGlass(glassConfig, CircleShape) else Modifier),\n                                shape = CircleShape,''', 1)
+          h = h.replace('''                                        .clickable { setSavedPlatform(platform.name) },\n                                    shape = RoundedCornerShape(24.dp),''', '''                                        .clickable { setSavedPlatform(platform.name) }\n                                        .then(if (homeGlass) Modifier.liquidGlass(glassConfig, RoundedCornerShape(24.dp)) else Modifier),\n                                    shape = RoundedCornerShape(24.dp),''', 1)
           hp.write_text(h)
 
-          gp=Path('app/src/main/kotlin/com/music/echo/ui/screens/settings/GlassEffectSettings.kt')
-          g=gp.read_text()
-          g=g.replace('R.drawable.home','R.drawable.music_note').replace('R.drawable.search','R.drawable.music_note').replace('R.drawable.settings','R.drawable.music_note').replace('R.drawable.tune','R.drawable.music_note')
+          gp = Path('app/src/main/kotlin/com/music/echo/ui/screens/settings/GlassEffectSettings.kt')
+          g = gp.read_text()
+          # Make the master switch independent of Floating Nav and rename it to the requested Savish Music Theme.
+          g = g.replace('''title = { Text(stringResource(R.string.liquid_glass_global_enabled)) },''', '''title = { Text("Savish Music Theme") },''', 1)
+          start = g.find('''                Material3SettingsItem(\n                    icon = painterResource(R.drawable.check),\n                    title = { Text("Savish Music Theme") },''')
+          if start >= 0:
+              end = g.find('''                )\n            )\n        )''', start)
+              if end >= 0:
+                  block = g[start:end+17]
+                  block = block.replace('''description = {\n                        Text(\n                            stringResource(\n                                // Glass is part of the floating nav bar experience and only\n                                // takes effect while that bar is enabled.\n                                if (useFloatingNavBar) {\n                                    R.string.liquid_glass_performance_warning\n                                } else {\n                                    R.string.liquid_glass_requires_floating_nav_bar\n                                }\n                            )\n                        )\n                    },''', '''description = { Text("Global platform background + Liquid Glass rows, cards and boxes. Floating navigation is independent.") },''')
+                  block = block.replace('checked = globalEnabled && useFloatingNavBar,', 'checked = globalEnabled,')
+                  block = block.replace('onCheckedChange = onGlobalEnabledChange,\n                            enabled = useFloatingNavBar,', 'onCheckedChange = onGlobalEnabledChange,\n                            enabled = true,')
+                  block = block.replace('id = if (globalEnabled && useFloatingNavBar)', 'id = if (globalEnabled)')
+                  block = block.replace('onClick = { if (useFloatingNavBar) onGlobalEnabledChange(!globalEnabled) }', 'onClick = { onGlobalEnabledChange(!globalEnabled) }')
+                  g = g[:start] + block + g[end+17:]
+          # Remove the floating-nav requirement text from the page.
+          g = g.replace('''                                // Glass is part of the floating nav bar experience and only\n                                // takes effect while that bar is enabled.\n''', '')
           gp.write_text(g)
-          print('Savish UI fixes applied')
+          print('Final Savish integration applied')
           PY
       - name: Build
         env:
@@ -70,6 +134,7 @@ jobs:
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then KEY_ALIAS=savishrelease; KEY_PASSWORD=android; STORE_PASSWORD=android; fi
           APKSIGNER=$(find "$ANDROID_SDK_ROOT/build-tools" -name apksigner | sort -V | tail -1)
+          test -n "$APKSIGNER"
           find app/build/outputs/apk -name '*.apk' -print0 | while IFS= read -r -d '' apk; do "$APKSIGNER" sign --ks keystore.jks --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$STORE_PASSWORD" --key-pass "pass:$KEY_PASSWORD" --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true "$apk"; "$APKSIGNER" verify --verbose "$apk"; done
       - name: Upload APK
         uses: actions/upload-artifact@v4
