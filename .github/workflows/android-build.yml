@@ -25,6 +25,36 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+    - name: Fix Savish Home Header
+      run: |
+        python3 - <<'PY'
+        from pathlib import Path
+        p = Path("app/src/main/kotlin/com/music/echo/MainActivity.kt")
+        s = p.read_text()
+        old = '''                val inSearchScreen by remember {\n                    derivedStateOf { currentRoute?.startsWith("search/") == true }\n                }'''
+        new = '''                val inSearchScreen by remember {\n                    derivedStateOf { currentRoute?.startsWith("search/") == true }\n                }\n                val isHomeScreen by remember {\n                    derivedStateOf { currentRoute == Screens.Home.route }\n                }'''
+        if old not in s: raise SystemExit("Home route marker not found")
+        s = s.replace(old, new, 1)
+        old = '''                val playerAwareWindowInsets = remember(\n                    bottomInset,\n                    shouldShowNavigationBar,\n                    playerBottomSheetState.isDismissed,\n                    showRail,\n                ) {'''
+        new = '''                val playerAwareWindowInsets = remember(\n                    bottomInset,\n                    shouldShowNavigationBar,\n                    playerBottomSheetState.isDismissed,\n                    showRail,\n                    isHomeScreen,\n                ) {'''
+        if old not in s: raise SystemExit("Insets marker not found")
+        s = s.replace(old, new, 1)
+        old = '''                    if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight\n                    windowsInsets\n                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)\n                        .add(WindowInsets(top = AppBarHeight, bottom = bottom))'''
+        new = '''                    if (!playerBottomSheetState.isDismissed) bottom += MiniPlayerHeight\n                    val topPadding = if (isHomeScreen) 0.dp else AppBarHeight\n                    windowsInsets\n                        .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)\n                        .add(WindowInsets(top = topPadding, bottom = bottom))'''
+        if old not in s: raise SystemExit("Top padding marker not found")
+        s = s.replace(old, new, 1)
+        old = '''                val topAppBarScrollBehavior = appBarScrollBehavior(\n                    canScroll = {\n                        !inSearchScreen &&\n                            (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)\n                    },\n                )'''
+        new = '''                val topAppBarScrollBehavior = appBarScrollBehavior(\n                    canScroll = {\n                        !inSearchScreen && !isHomeScreen &&\n                            (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)\n                    },\n                )'''
+        if old not in s: raise SystemExit("Scroll marker not found")
+        s = s.replace(old, new, 1)
+        old = '''                    shouldShowTopBar = currentRoute in topLevelScreens &&\n                        currentRoute != "settings" &&'''
+        new = '''                    shouldShowTopBar = currentRoute in topLevelScreens &&\n                        currentRoute != Screens.Home.route &&\n                        currentRoute != "settings" &&'''
+        if old not in s: raise SystemExit("Top bar marker not found")
+        s = s.replace(old, new, 1)
+        p.write_text(s)
+        print("Savish Home header fix applied")
+        PY
+
     - name: Prepare Release Keystore
       env:
         KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
