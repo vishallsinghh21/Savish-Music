@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,15 +29,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.compose.material3.SnackbarHostState
 
 private data class SavishPlatform(val name: String, val accent: Color)
 
 @Composable
-fun HomeScreen(
-    navController: NavController,
-    snackbarHostState: SnackbarHostState
-) {
+fun HomeScreen(navController: NavController, snackbarHostState: SnackbarHostState) {
     val platforms = remember {
         listOf(
             SavishPlatform("YouTube", Color(0xFFFF0033)),
@@ -44,8 +41,9 @@ fun HomeScreen(
             SavishPlatform("JioSaavn", Color(0xFFFF9500))
         )
     }
-    var selected by remember { mutableStateOf(platforms.first()) }
-    val aura by animateColorAsState(selected.accent.copy(alpha = 0.20f), label = "platformAura")
+    var selectedName by remember { mutableStateOf<String?>(null) }
+    val selectedAccent = platforms.firstOrNull { it.name == selectedName }?.accent ?: Color(0xFFFF9500)
+    val aura by animateColorAsState(selectedAccent.copy(alpha = .18f), label = "savishAura")
 
     Scaffold { padding ->
         Column(
@@ -53,49 +51,39 @@ fun HomeScreen(
                 .fillMaxSize()
                 .background(Color.Black)
                 .padding(padding)
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .padding(horizontal = 20.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "SAVISH MUSIC",
-                color = Color.White,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Choose your music platform",
-                color = Color.White.copy(alpha = .65f),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(Modifier.height(28.dp))
+            Text("SAVISH", color = Color.White, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            Text("M U S I C", color = Color(0xFFFF9500), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(10.dp))
+            Text("Your music. Your platforms.", color = Color.White.copy(alpha = .65f), style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(30.dp))
 
             platforms.forEach { platform ->
-                val active = selected.name == platform.name
-                val fill = if (active) platform.accent.copy(alpha = .18f) else Color.White.copy(alpha = .05f)
-                val borderColor = if (active) platform.accent else Color.White.copy(alpha = .22f)
+                val active = selectedName == platform.name
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 7.dp)
                         .clip(RoundedCornerShape(50))
                         .background(if (active) aura else Color.Transparent)
-                        .background(fill, RoundedCornerShape(50))
-                        .border(2.dp, borderColor, RoundedCornerShape(50))
-                        .clickable {
-                            selected = platform
-                            when (platform.name) {
-                                "YouTube" -> navController.navigate("search")
-                                "Spotify" -> navController.navigate("settings/spotify_import")
-                                "JioSaavn" -> navController.navigate("search")
-                            }
-                        }
-                        .padding(horizontal = 22.dp, vertical = 17.dp),
+                        .background(
+                            if (active) platform.accent.copy(alpha = .16f) else Color.White.copy(alpha = .05f),
+                            RoundedCornerShape(50)
+                        )
+                        .border(
+                            2.dp,
+                            if (active) platform.accent else Color.White.copy(alpha = .22f),
+                            RoundedCornerShape(50)
+                        )
+                        .clickable { selectedName = platform.name }
+                        .padding(horizontal = 24.dp, vertical = 18.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = platform.name,
+                        platform.name,
                         color = if (active) platform.accent else Color.White,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold
@@ -103,11 +91,11 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(24.dp))
             Text(
-                text = "Tap a capsule to switch its color",
-                color = selected.accent.copy(alpha = .9f),
-                style = MaterialTheme.typography.bodySmall
+                if (selectedName == null) "Tap a platform" else "$selectedName selected",
+                color = selectedAccent,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }
