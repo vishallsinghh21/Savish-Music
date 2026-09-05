@@ -2,6 +2,8 @@ name: Savish Music Final Release Build
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 jobs:
   build:
@@ -25,11 +27,7 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
-          else
-            keytool -genkeypair -keystore keystore.jks -storepass android -alias savishrelease -keypass android -dname "CN=Savish Music,O=Savish Music,C=IN" -keyalg RSA -keysize 2048 -validity 10000
-          fi
+          if [ -n "$KEYSTORE_BASE64" ]; then echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks; else keytool -genkeypair -keystore keystore.jks -storepass android -alias savishrelease -keypass android -dname "CN=Savish Music,O=Savish Music,C=IN" -keyalg RSA -keysize 2048 -validity 10000; fi
       - name: Sign and verify APK
         env:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -38,10 +36,7 @@ jobs:
         run: |
           if [ -z "$KEY_ALIAS" ]; then KEY_ALIAS=savishrelease; KEY_PASSWORD=android; STORE_PASSWORD=android; fi
           APKSIGNER=$(find "$ANDROID_SDK_ROOT/build-tools" -name apksigner | sort -V | tail -1)
-          find app/build/outputs/apk -name '*.apk' -print0 | while IFS= read -r -d '' apk; do
-            "$APKSIGNER" sign --ks keystore.jks --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$STORE_PASSWORD" --key-pass "pass:$KEY_PASSWORD" --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true "$apk"
-            "$APKSIGNER" verify --verbose "$apk"
-          done
+          find app/build/outputs/apk -name '*.apk' -print0 | while IFS= read -r -d '' apk; do "$APKSIGNER" sign --ks keystore.jks --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$STORE_PASSWORD" --key-pass "pass:$KEY_PASSWORD" --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true "$apk"; "$APKSIGNER" verify --verbose "$apk"; done
       - name: Upload final APK
         uses: actions/upload-artifact@v4
         with:
