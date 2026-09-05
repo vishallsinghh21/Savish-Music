@@ -14,7 +14,7 @@ jobs:
           java-version: '21'
           distribution: temurin
           cache: gradle
-      - name: Fix compile errors
+      - name: Fix compile errors and Savish UI
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -26,6 +26,7 @@ jobs:
           if marker in s and 'val (savishPlatform)' not in s:
               s=s.replace(marker,marker+'\n                val (savishPlatform) = rememberPreference(SavishPlatformKey, defaultValue = "all_media")',1)
           s=s.replace('globalEnabled = liquidGlassGlobalEnabled && useFloatingNavBar,','globalEnabled = liquidGlassGlobalEnabled,',1)
+          s=s.replace('shouldShowTopBar = currentRoute in topLevelScreens &&\n                        currentRoute != "settings" &&','shouldShowTopBar = currentRoute in topLevelScreens &&\n                        currentRoute != Screens.Home.route &&\n                        currentRoute != "settings" &&',1)
           a=s.find('                val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer')
           b=s.find('                val ringtoneViewModel: RingtoneViewModel = viewModel()',a)
           if a>=0 and b>a:
@@ -39,13 +40,16 @@ jobs:
           h=h.replace('import com.music.innertube.YouTube.SearchFilter.Companion.FILTER_SONG','import com.music.innertube.YouTube\nimport com.music.innertube.YouTube.SearchFilter.Companion.FILTER_SONG')
           h=h.replace('import echo.music.iad1tya.LocalGlassEffectConfig','import echo.music.iad1tya.ui.component.LocalGlassEffectConfig')
           h=h.replace('import echo.music.innertube.models.toMediaMetadata','import echo.music.iad1tya.models.toMediaMetadata')
+          old='''Brush.verticalGradient(\n                        listOf(Color(0xFF080C12), Color(0xFF101923), Color(0xFF07151A))\n                    )'''
+          new='''Brush.verticalGradient(\n                        when (selectedPlatform.name) {\n                            "youtube" -> listOf(Color(0xFF16060B), Color(0xFF5B0A20), Color(0xFF07121B))\n                            "spotify" -> listOf(Color(0xFF04130C), Color(0xFF075B39), Color(0xFF03131A))\n                            "jiosaavn" -> listOf(Color(0xFF1A0903), Color(0xFF8B3108), Color(0xFF25061B))\n                            else -> listOf(Color(0xFF06131A), Color(0xFF073C58), Color(0xFF080B18))\n                        }\n                    )'''
+          h=h.replace(old,new,1)
           hp.write_text(h)
 
           gp=Path('app/src/main/kotlin/com/music/echo/ui/screens/settings/GlassEffectSettings.kt')
           g=gp.read_text()
           g=g.replace('R.drawable.home','R.drawable.music_note').replace('R.drawable.search','R.drawable.music_note').replace('R.drawable.settings','R.drawable.music_note').replace('R.drawable.tune','R.drawable.music_note')
           gp.write_text(g)
-          print('compile fixes applied')
+          print('Savish UI fixes applied')
           PY
       - name: Build
         env:
@@ -70,6 +74,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Savish-Music-Release-APK-Fixed
+          name: Savish-Music-Final-Release-APK
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
