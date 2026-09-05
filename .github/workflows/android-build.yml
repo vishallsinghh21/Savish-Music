@@ -55,6 +55,31 @@ jobs:
         print("Savish Home header fix applied")
         PY
 
+    - name: Fix Savish Home Content and Search
+      run: |
+        python3 - <<'PY'
+        from pathlib import Path
+        p = Path("app/src/main/kotlin/com/music/echo/ui/screens/HomeScreen.kt")
+        s = p.read_text()
+        if 'import androidx.compose.foundation.text.KeyboardActions' not in s:
+            s = s.replace('import androidx.compose.foundation.text.BasicTextField\n', 'import androidx.compose.foundation.text.BasicTextField\nimport androidx.compose.foundation.text.KeyboardActions\nimport androidx.compose.foundation.text.KeyboardOptions\n')
+        if 'import androidx.compose.ui.text.input.ImeAction' not in s:
+            s = s.replace('import androidx.compose.ui.text.TextStyle\n', 'import androidx.compose.ui.text.TextStyle\nimport androidx.compose.ui.text.input.ImeAction\n')
+        if 'import java.net.URLEncoder' not in s:
+            s += '\nimport java.net.URLEncoder\n'
+        s = s.replace('homePage!!.sections.take(8)', 'homePage!!.sections')
+        old = '''                                value = searchText,\n                                onValueChange = { searchText = it },\n                                singleLine = true,'''
+        new = '''                                value = searchText,\n                                onValueChange = { searchText = it },\n                                singleLine = true,\n                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),\n                                keyboardActions = KeyboardActions(onSearch = {\n                                    val query = searchText.trim()\n                                    if (query.isNotEmpty()) {\n                                        navController.navigate("search/${URLEncoder.encode(query, "UTF-8")}")\n                                    }\n                                }),'''
+        if old not in s: raise SystemExit("Search field marker not found")
+        s = s.replace(old, new, 1)
+        old = '''        LazyRow(\n            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),\n            horizontalArrangement = Arrangement.spacedBy(16.dp)\n        ) {'''
+        new = '''        LazyRow(\n            userScrollEnabled = true,\n            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),\n            horizontalArrangement = Arrangement.spacedBy(16.dp)\n        ) {'''
+        if old not in s: raise SystemExit("Album row marker not found")
+        s = s.replace(old, new, 1)
+        p.write_text(s)
+        print("Savish Home content/search fix applied")
+        PY
+
     - name: Prepare Release Keystore
       env:
         KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
