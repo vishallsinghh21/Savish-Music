@@ -119,6 +119,38 @@ jobs:
         chmod +x gradlew
         ./gradlew assembleUniversalFossRelease
 
+    - name: Sign Release APK for Direct Install
+      env:
+        KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+      run: |
+        if [ -z "$KEYSTORE_BASE64" ]; then
+          KEY_ALIAS="savishrelease"
+          KEY_PASSWORD="android"
+          STORE_PASSWORD="android"
+        fi
+        APKSIGNER=$(find "$ANDROID_SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -1)
+        if [ -z "$APKSIGNER" ]; then
+          echo "apksigner not found in Android SDK build-tools"
+          exit 1
+        fi
+        find app/build/outputs/apk -type f -name '*.apk' -print0 | while IFS= read -r -d '' apk; do
+          echo "Signing $apk"
+          "$APKSIGNER" sign \
+            --ks keystore.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$STORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
+            --v4-signing-enabled false \
+            "$apk"
+          "$APKSIGNER" verify --verbose "$apk"
+        done
+
     - name: Upload Savish Music Release APK
       uses: actions/upload-artifact@v4
       with:
