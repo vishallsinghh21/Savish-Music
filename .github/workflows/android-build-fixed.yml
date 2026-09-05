@@ -32,12 +32,10 @@ jobs:
           add_import('import echo.music.iad1tya.constants.SavishGlassSearchKey', 'import echo.music.iad1tya.constants.SavishGlassHomeKey')
           add_import('import echo.music.iad1tya.constants.SavishGlassSettingsKey', 'import echo.music.iad1tya.constants.SavishGlassSearchKey')
           add_import('import echo.music.iad1tya.constants.SavishGlassContentKey', 'import echo.music.iad1tya.constants.SavishGlassSettingsKey')
-
           s = s.replace('globalEnabled = liquidGlassGlobalEnabled && useFloatingNavBar,', 'globalEnabled = liquidGlassGlobalEnabled,', 1)
           marker = '                val (liquidGlassNavBarEnabled) = rememberPreference(LiquidGlassNavBarEnabledKey, defaultValue = true)'
           if marker in s and 'val (savishPlatform)' not in s:
               s = s.replace(marker, marker + '''\n                val (savishPlatform) = rememberPreference(SavishPlatformKey, defaultValue = "all_media")\n                val (savishHomeGlass) = rememberPreference(SavishGlassHomeKey, defaultValue = true)\n                val (savishSearchGlass) = rememberPreference(SavishGlassSearchKey, defaultValue = true)\n                val (savishSettingsGlass) = rememberPreference(SavishGlassSettingsKey, defaultValue = true)\n                val (savishContentGlass) = rememberPreference(SavishGlassContentKey, defaultValue = true)''', 1)
-
           s = re.sub(r'(navBarEnabled\s*=\s*liquidGlassNavBarEnabled,)(\s*\))', r'\1\n                        homeEnabled = savishHomeGlass,\n                        searchEnabled = savishSearchGlass,\n                        settingsEnabled = savishSettingsGlass,\n                        contentEnabled = savishContentGlass,\2', s, count=1)
           s = re.sub(r'(val baseBg = if \(pureBlack\) Color\.Black else MaterialTheme\.colorScheme\.surfaceContainer)', r'''\1
                 val savishPlatformBackground = when (savishPlatform) {
@@ -93,10 +91,6 @@ jobs:
           s = s.replace('''                        !inSearchScreen &&
                             (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)''', '''                        !inSearchScreen && !isHomeScreen &&
                             (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)''', 1)
-          s = s.replace('''.background(if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface)''', '''.background(
-                        if (liquidGlassGlobalEnabled) savishPlatformBackground
-                        else if (pureBlack) Color.Black else MaterialTheme.colorScheme.surface
-                    )''', 1)
           p.write_text(s)
 
           hp = Path('app/src/main/kotlin/com/music/echo/ui/screens/HomeScreen.kt')
