@@ -1,4 +1,4 @@
-name: Savish Music Final Release Build
+name: Savish Music Final Locked Release Build
 on: push
 jobs:
   build:
