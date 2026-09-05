@@ -20,7 +20,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import echo.music.iad1tya.ui.component.backdrop.Backdrop
 import echo.music.iad1tya.ui.component.backdrop.drawBackdrop
-import echo.music.innertube.models.*
 import echo.music.iad1tya.ui.component.backdrop.effects.blur
 import echo.music.iad1tya.ui.component.backdrop.effects.colorControls
 import echo.music.iad1tya.ui.component.backdrop.effects.lens
