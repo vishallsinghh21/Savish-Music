@@ -19,24 +19,46 @@ jobs:
           java-version: '17'
           distribution: temurin
           cache: gradle
-      - name: Build release APK
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleUniversalFossRelease --stacktrace
-      - name: Prepare signing key
+      - name: Prepare signing key and build release APK
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS_SECRET: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD_SECRET: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD_SECRET: ${{ secrets.STORE_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks; else keytool -genkeypair -keystore keystore.jks -storepass android -alias savishrelease -keypass android -dname "CN=Savish Music,O=Savish Music,C=IN" -keyalg RSA -keysize 2048 -validity 10000; fi
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
+            export KEY_ALIAS="$KEY_ALIAS_SECRET"
+            export KEY_PASSWORD="$KEY_PASSWORD_SECRET"
+            export STORE_PASSWORD="$STORE_PASSWORD_SECRET"
+          else
+            keytool -genkeypair -keystore keystore.jks -storepass android -alias savishrelease -keypass android -dname "CN=Savish Music,O=Savish Music,C=IN" -keyalg RSA -keysize 2048 -validity 10000
+            export KEY_ALIAS=savishrelease
+            export KEY_PASSWORD=android
+            export STORE_PASSWORD=android
+          fi
+          chmod +x gradlew
+          ./gradlew assembleUniversalFossRelease --stacktrace
       - name: Sign and verify APK
         env:
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS_SECRET: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD_SECRET: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD_SECRET: ${{ secrets.STORE_PASSWORD }}
         run: |
-          if [ -z "$KEY_ALIAS" ]; then KEY_ALIAS=savishrelease; KEY_PASSWORD=android; STORE_PASSWORD=android; fi
+          if [ -n "$KEY_ALIAS_SECRET" ]; then
+            KEY_ALIAS="$KEY_ALIAS_SECRET"
+            KEY_PASSWORD="$KEY_PASSWORD_SECRET"
+            STORE_PASSWORD="$STORE_PASSWORD_SECRET"
+          else
+            KEY_ALIAS=savishrelease
+            KEY_PASSWORD=android
+            STORE_PASSWORD=android
+          fi
           APKSIGNER=$(find "$ANDROID_SDK_ROOT/build-tools" -name apksigner | sort -V | tail -1)
-          find app/build/outputs/apk -name '*.apk' -print0 | while IFS= read -r -d '' apk; do "$APKSIGNER" sign --ks keystore.jks --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$STORE_PASSWORD" --key-pass "pass:$KEY_PASSWORD" --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true "$apk"; "$APKSIGNER" verify --verbose "$apk"; done
+          find app/build/outputs/apk -name '*.apk' -print0 | while IFS= read -r -d '' apk; do
+            "$APKSIGNER" sign --ks keystore.jks --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$STORE_PASSWORD" --key-pass "pass:$KEY_PASSWORD" --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true "$apk"
+            "$APKSIGNER" verify --verbose "$apk"
+          done
       - name: Upload final APK
         uses: actions/upload-artifact@v4
         with:
