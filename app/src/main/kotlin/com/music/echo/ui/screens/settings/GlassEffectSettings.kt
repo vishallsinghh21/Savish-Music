@@ -190,7 +190,7 @@ fun GlassEffectSettings(
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.check),
-                    title = { Text(stringResource(R.string.liquid_glass_global_enabled)) },
+                    title = { Text("Savish Music Theme") },
                     description = {
                         Text(
                             stringResource(
@@ -206,13 +206,13 @@ fun GlassEffectSettings(
                     },
                     trailingContent = {
                         Switch(
-                            checked = globalEnabled && useFloatingNavBar,
+                            checked = globalEnabled,
                             onCheckedChange = onGlobalEnabledChange,
-                            enabled = useFloatingNavBar,
+                            enabled = true,
                             thumbContent = {
                                 Icon(
                                     painter = painterResource(
-                                        id = if (globalEnabled && useFloatingNavBar) R.drawable.check else R.drawable.close
+                                        id = if (globalEnabled) R.drawable.check else R.drawable.close
                                     ),
                                     contentDescription = null,
                                     modifier = Modifier.size(SwitchDefaults.IconSize)
@@ -220,7 +220,7 @@ fun GlassEffectSettings(
                             }
                         )
                     },
-                    onClick = { if (useFloatingNavBar) onGlobalEnabledChange(!globalEnabled) }
+                    onClick = { onGlobalEnabledChange(!globalEnabled) }
                 )
             )
         )

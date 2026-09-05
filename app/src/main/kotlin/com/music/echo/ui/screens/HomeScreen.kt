@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.music.innertube.YouTube
 import com.music.innertube.YouTube.SearchFilter.Companion.FILTER_SONG
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.Artist
@@ -63,7 +64,7 @@ import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
 import com.music.innertube.models.WatchEndpoint
-import echo.music.iad1tya.LocalGlassEffectConfig
+import echo.music.iad1tya.ui.component.LocalGlassEffectConfig
 import echo.music.iad1tya.LocalPlayerConnection
 import echo.music.iad1tya.constants.SavishGlassHomeKey
 import echo.music.iad1tya.constants.SavishPlatformKey
@@ -72,7 +73,7 @@ import echo.music.iad1tya.ui.component.GlassComponent
 import echo.music.iad1tya.ui.component.liquidGlass
 import echo.music.iad1tya.utils.rememberPreference
 import echo.music.iad1tya.viewmodels.HomeViewModel
-import echo.music.innertube.models.toMediaMetadata
+import echo.music.iad1tya.models.toMediaMetadata
 import kotlinx.coroutines.delay
 
 private data class SavishPlatform(
@@ -112,7 +113,7 @@ fun HomeScreen(
     val quickPicks by viewModel.quickPicks.collectAsState()
     val playerConnection = LocalPlayerConnection.current
     val glassConfig = LocalGlassEffectConfig.current
-    val (homeGlassEnabled, setHomeGlassEnabled) = rememberPreference(SavishGlassHomeKey, defaultValue = false)
+    val (homeGlassEnabled, setHomeGlassEnabled) = rememberPreference(SavishGlassHomeKey, defaultValue = true)
     val homeGlass = homeGlassEnabled && glassConfig.isEnabledFor(GlassComponent.HOME)
 
     var searchText by remember { mutableStateOf("") }
