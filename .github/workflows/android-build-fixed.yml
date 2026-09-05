@@ -1,0 +1,123 @@
+name: Savish Music APK - Fixed Build
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Savish Music APK (fixed)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Fix Savish integration before build
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # MainActivity: keep the real backdrop API and put the platform theme on the Scaffold surface.
+          p = Path('app/src/main/kotlin/com/music/echo/MainActivity.kt')
+          s = p.read_text()
+          start = '                val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer'
+          end = '                val ringtoneViewModel: RingtoneViewModel = viewModel()'
+          a = s.find(start)
+          b = s.find(end, a)
+          if a >= 0 and b > a:
+              replacement = '''                val baseBg = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer
+                val savishThemeColor = when (savishPlatform) {
+                    "youtube" -> Color(0xFF3D0A1A)
+                    "spotify" -> Color(0xFF075B39)
+                    "jiosaavn" -> Color(0xFF7A2D08)
+                    else -> Color(0xFF073C58)
+                }
+                val appBackdrop = rememberLayerBackdrop {
+                    drawContent()
+                }
+
+'''
+              s = s[:a] + replacement + s[b:]
+          s = s.replace('Scaffold(\n                        snackbarHost = { SnackbarHost(snackbarHostState) },', 'Scaffold(\n                        containerColor = if (liquidGlassGlobalEnabled) savishThemeColor else baseBg,\n                        snackbarHost = { SnackbarHost(snackbarHostState) },', 1)
+          p.write_text(s)
+
+          # HomeScreen: fix imports/references and keep inline search behavior.
+          hp = Path('app/src/main/kotlin/com/music/echo/ui/screens/HomeScreen.kt')
+          hs = hp.read_text()
+          hs = hs.replace('import com.music.innertube.YouTube.SearchFilter.Companion.FILTER_SONG', 'import com.music.innertube.YouTube\nimport com.music.innertube.YouTube.SearchFilter.Companion.FILTER_SONG')
+          hs = hs.replace('import echo.music.iad1tya.LocalGlassEffectConfig', 'import echo.music.iad1tya.ui.component.LocalGlassEffectConfig')
+          hs = hs.replace('import echo.music.innertube.models.toMediaMetadata', 'import echo.music.iad1tya.models.toMediaMetadata')
+          hs = hs.replace('    val (homeGlassEnabled, setHomeGlassEnabled) = rememberPreference(SavishGlassHomeKey, defaultValue = false)', '    val homeGlassEnabled by rememberPreference(SavishGlassHomeKey, defaultValue = false)')
+          hp.write_text(hs)
+
+          # Settings: use guaranteed existing icon resources for the new per-area switches.
+          gp = Path('app/src/main/kotlin/com/music/echo/ui/screens/settings/GlassEffectSettings.kt')
+          gs = gp.read_text()
+          gs = gs.replace('R.drawable.home', 'R.drawable.music_note')
+          gs = gs.replace('R.drawable.search', 'R.drawable.music_note')
+          gs = gs.replace('R.drawable.settings', 'R.drawable.music_note')
+          gs = gs.replace('R.drawable.tune', 'R.drawable.music_note')
+          gp.write_text(gs)
+          print('Fixed Savish integration applied')
+          PY
+
+      - name: Prepare Release Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
+          else
+            keytool -genkeypair -keystore keystore.jks -storepass android -alias savishrelease -keypass android -dname "CN=Savish Music,O=Savish Music,C=IN" -keyalg RSA -keysize 2048 -validity 10000
+          fi
+
+      - name: Build Release APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            KEY_ALIAS=savishrelease
+            KEY_PASSWORD=android
+            STORE_PASSWORD=android
+          fi
+          chmod +x gradlew
+          ./gradlew assembleUniversalFossRelease
+
+      - name: Sign Release APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            KEY_ALIAS=savishrelease
+            KEY_PASSWORD=android
+            STORE_PASSWORD=android
+          fi
+          APKSIGNER=$(find "$ANDROID_SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -1)
+          test -n "$APKSIGNER"
+          find app/build/outputs/apk -type f -name '*.apk' -print0 | while IFS= read -r -d '' apk; do
+            "$APKSIGNER" sign --ks keystore.jks --ks-key-alias "$KEY_ALIAS" --ks-pass "pass:$STORE_PASSWORD" --key-pass "pass:$KEY_PASSWORD" --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true "$apk"
+            "$APKSIGNER" verify --verbose "$apk"
+          done
+
+      - name: Upload Savish Music Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Savish-Music-Release-APK-Fixed
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
