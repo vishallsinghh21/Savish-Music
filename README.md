@@ -8,6 +8,12 @@
 
 ---
 
+## Savish Music UI Reminder
+
+> **Reminder:** Before any APK is considered final, complete and verify the requested **Savish Music UI changes**: global YouTube/Spotify/JioSaavn platform backgrounds, Savish Music Theme ON/OFF, Liquid Glass on selected UI elements only, inline Home search, and removal of duplicate Echo Music branding/header.
+
+---
+
 ## Overview
 
 Echo Music delivers a seamless, premium listening experience by leveraging YouTube Music's vast library — without the ads. It adds powerful extras including offline downloads, real-time synchronized lyrics, and environment-aware music recognition.
@@ -24,6 +30,7 @@ Echo Music delivers a seamless, premium listening experience by leveraging YouTu
 ## Table of Contents
 
 - [Overview](#overview)
+- [Savish Music UI Reminder](#savish-music-ui-reminder)
 - [Screenshots](#screenshots)
 - [Features](#features)
 - [Installation & Setup](#installation--setup)
@@ -178,8 +185,6 @@ Download the latest pre-compiled APK from the [Releases Page](https://github.com
    echo "sdk.dir=/path/to/your/android/sdk" > local.properties
    ```
 
-   _(For detailed paths on Windows/macOS/Linux, refer to [SETUP.md](SETUP.md))_
-
 3. **Firebase Configuration (Optional)**
    Firebase is required for analytics and crash reporting. See the instructions in [SETUP.md](SETUP.md#3-configure-firebase-optional) for adding your `google-services.json`.
 
@@ -253,14 +258,14 @@ Without the support of this incredible open-source community, none of this would
 
 Echo Music stands on the shoulders of several excellent open-source projects. Sincere thanks to:
 
-| Project                                                                                                                   | Description                                         |
-| :------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------------- |
+| Project | Description |
+| :--- | :--- |
 | **[Metrolist](https://github.com/MetrolistGroup/Metrolist)** & **[Vivi Music](https://github.com/vivizzz007/vivi-music)** | Foundational inspiration and architecture reference |
-| **[ArchiveTune](https://github.com/koiverse/ArchiveTune)**                                                                | Material You UI inspiration                         |
-| **[Better Lyrics](https://better-lyrics.boidu.dev/)**                                                                     | Lyrics enhancement and synchronization              |
-| **[SimpMusic](https://github.com/maxrave-dev/SimpMusic)**                                                                 | Lyrics implementation reference                     |
-| **[Music Recognizer](https://github.com/aleksey-saenko/MusicRecognizer)**                                                 | Audio recognition (Echo Find)                       |
-| **[BravePipe](https://github.com/bravepipeproject/BravePipe)**                                                            | Decryption handling and backup playback engine      |
+| **[ArchiveTune](https://github.com/koiverse/ArchiveTune)** | Material You UI inspiration |
+| **[Better Lyrics](https://better-lyrics.boidu.dev/)** | Lyrics enhancement and synchronization |
+| **[SimpMusic](https://github.com/maxrave-dev/SimpMusic)** | Lyrics implementation reference |
+| **[Music Recognizer](https://github.com/aleksey-saenko/MusicRecognizer)** | Audio recognition (Echo Find) |
+| **[BravePipe](https://github.com/bravepipeproject/BravePipe)** | Decryption handling and backup playback engine |
 
 ---
 
