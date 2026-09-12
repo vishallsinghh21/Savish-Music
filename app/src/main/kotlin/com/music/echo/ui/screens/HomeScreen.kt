@@ -641,7 +641,6 @@ fun HomeScreen(
     var platformFeedItems by remember { mutableStateOf<List<YTItem>>(emptyList()) }
     var isPlatformLoading by remember { mutableStateOf(false) }
 
-    // Playlist/Album aur Song dono bina kisi restrictive filter ke load karega
     LaunchedEffect(activeCapsuleId, installedExtensions) {
         if (activeCapsuleId == "universal") {
             isPlatformLoading = true
@@ -653,13 +652,13 @@ fun HomeScreen(
                         if (feed.isNotEmpty()) {
                             combinedItems.addAll(feed)
                         } else {
-                            val ytFallback = YouTube.search(ext.name).getOrNull()?.items.orEmpty()
+                            val ytFallback = YouTube.search(ext.name, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
                             combinedItems.addAll(ytFallback)
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
                         try {
-                            val ytFallback = YouTube.search(ext.name).getOrNull()?.items.orEmpty()
+                            val ytFallback = YouTube.search(ext.name, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
                             combinedItems.addAll(ytFallback)
                         } catch (ex: Exception) {
                             ex.printStackTrace()
@@ -678,14 +677,14 @@ fun HomeScreen(
                 } else {
                     val extItem = installedExtensions.find { it.id == activeCapsuleId }
                     val queryName = extItem?.name ?: activeCapsuleId
-                    platformFeedItems = YouTube.search(queryName).getOrNull()?.items.orEmpty()
+                    platformFeedItems = YouTube.search(queryName, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 try {
                     val extItem = installedExtensions.find { it.id == activeCapsuleId }
                     val queryName = extItem?.name ?: activeCapsuleId
-                    platformFeedItems = YouTube.search(queryName).getOrNull()?.items.orEmpty()
+                    platformFeedItems = YouTube.search(queryName, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
                 } catch (ex: Exception) {
                     platformFeedItems = emptyList()
                 }
@@ -713,7 +712,7 @@ fun HomeScreen(
                 } else {
                     "$searchQuery $activeCapsuleName"
                 }
-                val result = YouTube.search(queryPrefix).getOrNull()?.items.orEmpty()
+                val result = YouTube.search(queryPrefix, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
                 searchResults = result
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -2331,7 +2330,6 @@ fun HomeScreen(
                     }
                 }
 
-                // FIXED: Ye shimmer ab keval 'All' capsule me chalega, baki kisi capsule me niche black boxes nahi aayenge
                 if (activeCapsuleId == "all" && (isLoading || (homePage?.continuation != null && homePage?.sections?.isNotEmpty() == true))) {
                     item(key = "loading_shimmer") {
                         ShimmerHost(modifier = Modifier.animateItem()) {
