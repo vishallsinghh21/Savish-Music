@@ -42,9 +42,9 @@ object PlatformDataBridge {
     suspend fun fetchPlatformFeed(platformId: String): List<YTItem> = withContext(Dispatchers.IO) {
         try {
             val query = getPlatformQuery(platformId)
-            // InnerTube library ka valid non-null filter pass kiya gaya hai
             val result = YouTube.search(query, YouTube.SearchFilter.FILTER_SONG).getOrNull()
-            result?.items.orEmpty()
+            // Agar pehle page me items hain to unhe return karo, filter nulls
+            result?.items?.filterNotNull().orEmpty()
         } catch (e: Exception) {
             emptyList()
         }
