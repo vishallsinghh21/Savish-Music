@@ -7,3 +7,7 @@
 # sdk.dir=C\:\\Users\\username\\AppData\\Local\\Android\\sdk
 
 sdk.dir=YOUR_ANDROID_SDK_PATH
+
+# Public identifier for your own Spotify Developer Dashboard application.
+# Do not add a Spotify client secret to an Android app.
+SPOTIFY_CLIENT_ID=YOUR_SPOTIFY_CLIENT_ID

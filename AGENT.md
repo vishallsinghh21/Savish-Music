@@ -294,6 +294,8 @@ NDK `27.0.12077973`. JDK 21 (kotlin/java toolchain).
   without it (GMS-only feature).
 - Build-time secrets read from `local.properties` first, then env vars:
   `LASTFM_API_KEY`, `LASTFM_SECRET`, `GH_CLIENT_ID`, `GH_CLIENT_SECRET`.
+  `SPOTIFY_CLIENT_ID` is also read this way for the Spotify OAuth client; do
+  not add a Spotify client secret to the Android app.
   Also `FLOW_NEURO_BASE_URL` / `FLOW_NEURO_API_KEY` (defaults to
   `https://api.flowneuroengine.com`) as Gradle properties.
 - AI lyrics translation is configured **in-app** (Settings → AI Settings),
