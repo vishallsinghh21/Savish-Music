@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -14,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -68,8 +66,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
@@ -152,7 +148,6 @@ import echo.music.iad1tya.models.toMediaMetadata
 import echo.music.iad1tya.playback.queues.YouTubeQueue
 import echo.music.iad1tya.ui.component.AlbumGridItem
 import echo.music.iad1tya.ui.component.ArtistGridItem
-import echo.music.iad1tya.ui.component.LocalBottomSheetPageState
 import echo.music.iad1tya.ui.component.LocalMenuState
 import echo.music.iad1tya.ui.component.RandomizeGridItem
 import echo.music.iad1tya.ui.component.SongGridItem
@@ -646,6 +641,7 @@ fun HomeScreen(
     var platformFeedItems by remember { mutableStateOf<List<YTItem>>(emptyList()) }
     var isPlatformLoading by remember { mutableStateOf(false) }
 
+    // Playlist/Album aur Song dono bina kisi restrictive filter ke load karega
     LaunchedEffect(activeCapsuleId, installedExtensions) {
         if (activeCapsuleId == "universal") {
             isPlatformLoading = true
@@ -657,13 +653,13 @@ fun HomeScreen(
                         if (feed.isNotEmpty()) {
                             combinedItems.addAll(feed)
                         } else {
-                            val ytFallback = YouTube.search(ext.name, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
+                            val ytFallback = YouTube.search(ext.name).getOrNull()?.items.orEmpty()
                             combinedItems.addAll(ytFallback)
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
                         try {
-                            val ytFallback = YouTube.search(ext.name, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
+                            val ytFallback = YouTube.search(ext.name).getOrNull()?.items.orEmpty()
                             combinedItems.addAll(ytFallback)
                         } catch (ex: Exception) {
                             ex.printStackTrace()
@@ -682,14 +678,14 @@ fun HomeScreen(
                 } else {
                     val extItem = installedExtensions.find { it.id == activeCapsuleId }
                     val queryName = extItem?.name ?: activeCapsuleId
-                    platformFeedItems = YouTube.search(queryName, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
+                    platformFeedItems = YouTube.search(queryName).getOrNull()?.items.orEmpty()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 try {
                     val extItem = installedExtensions.find { it.id == activeCapsuleId }
                     val queryName = extItem?.name ?: activeCapsuleId
-                    platformFeedItems = YouTube.search(queryName, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
+                    platformFeedItems = YouTube.search(queryName).getOrNull()?.items.orEmpty()
                 } catch (ex: Exception) {
                     platformFeedItems = emptyList()
                 }
@@ -717,7 +713,7 @@ fun HomeScreen(
                 } else {
                     "$searchQuery $activeCapsuleName"
                 }
-                val result = YouTube.search(queryPrefix, YouTube.SearchFilter.FILTER_SONG).getOrNull()?.items.orEmpty()
+                val result = YouTube.search(queryPrefix).getOrNull()?.items.orEmpty()
                 searchResults = result
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -789,7 +785,7 @@ fun HomeScreen(
         snapshotFlow { lazylistState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
             .collect { lastVisibleIndex ->
                 val len = lazylistState.layoutInfo.totalItemsCount
-                if (lastVisibleIndex != null && lastVisibleIndex >= len - 3) {
+                if (lastVisibleIndex != null && lastVisibleIndex >= len - 3 && activeCapsuleId == "all") {
                     viewModel.loadMoreYouTubeItems(homePage?.continuation)
                 }
             }
@@ -1385,7 +1381,7 @@ fun HomeScreen(
                             ytGridItem(item)
                         }
                     }
-                } else if (isLoading && homePage?.chips.isNullOrEmpty()) {
+                } else if (isLoading && homePage?.chips.isNullOrEmpty() && activeCapsuleId == "all") {
                     item(key = "chips_shimmer") {
                         ShimmerHost {
                             Row(
@@ -1478,24 +1474,61 @@ fun HomeScreen(
                             }
                         }
                     } else {
-                        item(key = "universal_feed_grid") {
-                            val distinctItems = platformFeedItems.distinctBy { it.id }
-                            val rows = if (distinctItems.size > 4) 2 else 1
+                        val distinctItems = platformFeedItems.distinctBy { it.id }
+                        val playlistsAndAlbums = distinctItems.filter { it is PlaylistItem || it is AlbumItem }
+                        val trackItems = distinctItems.filter { it !is PlaylistItem && it !is AlbumItem }
 
-                            LazyHorizontalGrid(
-                                state = rememberLazyGridState(),
-                                rows = GridCells.Fixed(rows),
-                                contentPadding = PaddingValues(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height((currentGridHeight + 60.dp) * rows)
-                                    .animateItem()
-                            ) {
-                                items(distinctItems, key = { it.id }) { item ->
-                                    Box(modifier = Modifier.width(160.dp)) {
-                                        ytGridItem(item)
+                        if (playlistsAndAlbums.isNotEmpty()) {
+                            item(key = "universal_playlists_title") {
+                                Text(
+                                    text = "Featured Playlists & Albums",
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                            item(key = "universal_playlists_row") {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(playlistsAndAlbums, key = { "pl_${it.id}" }) { plItem ->
+                                        Box(modifier = Modifier.width(160.dp)) {
+                                            ytGridItem(plItem)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (trackItems.isNotEmpty()) {
+                            item(key = "universal_tracks_title") {
+                                Text(
+                                    text = "Top Tracks",
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                            item(key = "universal_tracks_grid") {
+                                val rows = if (trackItems.size > 3) 2 else 1
+                                LazyHorizontalGrid(
+                                    state = rememberLazyGridState(),
+                                    rows = GridCells.Fixed(rows),
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height((currentGridHeight + 60.dp) * rows)
+                                ) {
+                                    items(trackItems, key = { "trk_${it.id}" }) { item ->
+                                        Box(modifier = Modifier.width(160.dp)) {
+                                            ytGridItem(item)
+                                        }
                                     }
                                 }
                             }
@@ -1525,24 +1558,61 @@ fun HomeScreen(
                             }
                         }
                     } else {
-                        item(key = "platform_feed_grid") {
-                            val distinctItems = platformFeedItems.distinctBy { it.id }
-                            val rows = if (distinctItems.size > 4) 2 else 1
+                        val distinctItems = platformFeedItems.distinctBy { it.id }
+                        val playlistsAndAlbums = distinctItems.filter { it is PlaylistItem || it is AlbumItem }
+                        val trackItems = distinctItems.filter { it !is PlaylistItem && it !is AlbumItem }
 
-                            LazyHorizontalGrid(
-                                state = rememberLazyGridState(),
-                                rows = GridCells.Fixed(rows),
-                                contentPadding = PaddingValues(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height((currentGridHeight + 60.dp) * rows)
-                                    .animateItem()
-                            ) {
-                                items(distinctItems, key = { it.id }) { item ->
-                                    Box(modifier = Modifier.width(160.dp)) {
-                                        ytGridItem(item)
+                        if (playlistsAndAlbums.isNotEmpty()) {
+                            item(key = "capsule_playlists_title") {
+                                Text(
+                                    text = "Featured Playlists & Albums",
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                            item(key = "capsule_playlists_row") {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(playlistsAndAlbums, key = { "cpl_${it.id}" }) { plItem ->
+                                        Box(modifier = Modifier.width(160.dp)) {
+                                            ytGridItem(plItem)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (trackItems.isNotEmpty()) {
+                            item(key = "capsule_tracks_title") {
+                                Text(
+                                    text = "Popular Tracks",
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                            item(key = "capsule_tracks_grid") {
+                                val rows = if (trackItems.size > 3) 2 else 1
+                                LazyHorizontalGrid(
+                                    state = rememberLazyGridState(),
+                                    rows = GridCells.Fixed(rows),
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height((currentGridHeight + 60.dp) * rows)
+                                ) {
+                                    items(trackItems, key = { "ctrk_${it.id}" }) { item ->
+                                        Box(modifier = Modifier.width(160.dp)) {
+                                            ytGridItem(item)
+                                        }
                                     }
                                 }
                             }
@@ -2261,7 +2331,8 @@ fun HomeScreen(
                     }
                 }
 
-                if (isLoading || homePage?.continuation != null && homePage?.sections?.isNotEmpty() == true) {
+                // FIXED: Ye shimmer ab keval 'All' capsule me chalega, baki kisi capsule me niche black boxes nahi aayenge
+                if (activeCapsuleId == "all" && (isLoading || (homePage?.continuation != null && homePage?.sections?.isNotEmpty() == true))) {
                     item(key = "loading_shimmer") {
                         ShimmerHost(modifier = Modifier.animateItem()) {
                             Row(
