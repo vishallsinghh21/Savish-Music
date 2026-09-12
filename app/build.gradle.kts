@@ -52,6 +52,10 @@ android {
         buildConfigField("String", "GH_CLIENT_ID", "\"$githubClientId\"")
         buildConfigField("String", "GH_CLIENT_SECRET", "\"$githubClientSecret\"")
 
+        // Spotify's Client ID is public, but keep it outside source control so forks use their own app.
+        val spotifyClientId = localProperties.getProperty("SPOTIFY_CLIENT_ID") ?: System.getenv("SPOTIFY_CLIENT_ID") ?: ""
+        buildConfigField("String", "SPOTIFY_CLIENT_ID", "\"$spotifyClientId\"")
+
         buildConfigField("String", "FLOW_NEURO_BASE_URL", project.findProperty("FLOW_NEURO_BASE_URL")?.toString()?.let { "\"$it\"" } ?: "\"https://api.flowneuroengine.com\"")
         buildConfigField("String", "FLOW_NEURO_API_KEY", project.findProperty("FLOW_NEURO_API_KEY")?.toString()?.let { "\"$it\"" } ?: "\"\"")
 
